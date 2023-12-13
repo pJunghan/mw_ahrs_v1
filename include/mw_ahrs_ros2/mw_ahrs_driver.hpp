@@ -20,6 +20,7 @@
 #include <cmath>
 #include <thread>
 #include <chrono>
+#include <libserial/SerialPort.h>
 
 #include "rclcpp/rclcpp.hpp"
 #include "tf2/LinearMath/Quaternion.h"
@@ -28,8 +29,6 @@
 #include "sensor_msgs/msg/imu.hpp"
 #include "sensor_msgs/msg/magnetic_field.hpp"
 #include "std_srvs/srv/trigger.hpp"
-
-#include "serial/serial.h"
 
 class MwAhrsDriver : public rclcpp::Node
 {
@@ -67,7 +66,7 @@ public:
   void publishData();
 
   /// For serial communication
-  std::shared_ptr<serial::Serial> serial_;
+  std::shared_ptr<LibSerial::SerialPort> serial_;
 
 private:
   /// ROS2 parameters
@@ -94,9 +93,6 @@ private:
 
   /// Sensor version
   std::string version_;
-
-  /// Publishing rate
-  // double rate_;
 };
 
 #endif  // MW_AHRS_ROS2__MW_AHRS_DRIVER_HPP_

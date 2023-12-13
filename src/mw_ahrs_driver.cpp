@@ -14,8 +14,8 @@
 
 #include "mw_ahrs_ros2/mw_ahrs_driver.hpp"
 
-const std::string eol("\n");
-const std::size_t max_line_length(128);
+const char eol('\n');
+const size_t timeout(1000);
 
 using namespace std::literals;
 
@@ -34,7 +34,7 @@ MwAhrsDriver::MwAhrsDriver(const std::string& node) : Node(node)
 
 MwAhrsDriver::~MwAhrsDriver()
 {
-  serial_->close();
+  serial_->Close();
 }
 
 bool MwAhrsDriver::init()
@@ -52,23 +52,26 @@ bool MwAhrsDriver::init()
   rp_mag_->msg_.header.frame_id = frame_id_;
 
   // Initial setting for serial communication
-  serial_ = std::make_shared<serial::Serial>();
-  serial_->setPort(port_);
-  serial_->setBaudrate(115200);
-  serial::Timeout to = serial::Timeout::simpleTimeout(1000);
-  serial_->setTimeout(to);
+  serial_ = std::make_shared<LibSerial::SerialPort>();
 
   try
   {
-    serial_->open();
+    serial_->Open(port_);
   }
-  catch (serial::IOException& e)
+  catch (LibSerial::OpenFailed& e)
   {
-    RCLCPP_ERROR_STREAM_ONCE(this->get_logger(), "serial::IOException: " << e.what());
+    RCLCPP_ERROR_STREAM_ONCE(this->get_logger(), "LibSerial::OpenFailed: " << e.what());
+    return false;
   }
 
+  serial_->SetBaudRate(LibSerial::BaudRate::BAUD_115200);
+  serial_->SetParity(LibSerial::Parity::PARITY_NONE);
+  serial_->SetStopBits(LibSerial::StopBits::STOP_BITS_1);
+  serial_->FlushIOBuffers();
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
   // Check the serial port
-  if (serial_->isOpen())
+  if (serial_->IsOpen())
   {
     RCLCPP_INFO(this->get_logger(), "MW AHRS driver cocbnnected to %s at %i baud", port_.c_str(), 115200);
   }
@@ -90,9 +93,10 @@ void MwAhrsDriver::read()
 {
   while (rclcpp::ok())
   {
-    if (serial_->available())
+    if (serial_->IsDataAvailable())
     {
-      std::string msg = serial_->readline(max_line_length, eol);
+      std::string msg;
+      serial_->ReadLine(msg, eol, timeout);
       // RCLCPP_INFO_STREAM(this->get_logger(), "Message : " << msg);
 
       int cnt = 0;
@@ -109,9 +113,9 @@ void MwAhrsDriver::read()
 
       int num = 0;
       if (version_ == "v1")
-        num = 12;
-      else if (version_ == "v2")
         num = 14;
+      else if (version_ == "v2")
+        num = 16;
 
       if (cnt == num)
       {
@@ -146,17 +150,17 @@ void MwAhrsDriver::read()
 void MwAhrsDriver::start()
 {
   std::string start = "ss=15\n";
-  serial_->write(start);
+  serial_->Write(start);
 
   std::string frequency = "sp=10\n";
-  serial_->write(frequency);
+  serial_->Write(frequency);
 }
 
 void MwAhrsDriver::reset(const std::shared_ptr<std_srvs::srv::Trigger::Request>,
                          std::shared_ptr<std_srvs::srv::Trigger::Response> resp)
 {
   std::string msg = "rst\n";
-  serial_->write(msg);
+  serial_->Write(msg);
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   start();
   resp->success = true;

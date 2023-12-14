@@ -30,6 +30,9 @@ ccolcon build --symlink-install
 
 ## Usage
 ```
-sudo chmod 666 /dev/ttyUSB0
+sudo cp rules/99-mwahrs.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger
+
 ros2 launch mw_ahrs_ros2 mw_ahrs_launch.py
 ```

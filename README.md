@@ -36,3 +36,4 @@ sudo udevadm trigger
 
 ros2 launch mw_ahrs_ros2 mw_ahrs_launch.py
 ```
+# mw_ahrs_v1
